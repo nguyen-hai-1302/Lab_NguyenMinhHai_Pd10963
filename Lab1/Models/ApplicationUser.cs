@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace Lab1.Models
 {
@@ -11,5 +12,8 @@ namespace Lab1.Models
         [ForeignKey("Region")] 
         public int RegionId { get; set; }
         public string? Avatar {  get; set; }
+        public bool IsDeleted { get; set; } = false;
+        [JsonIgnore]
+        public string OTP { get; set; } = DateTimeOffset.Now.ToUnixTimeSeconds().ToString() + "none";
     }
 }

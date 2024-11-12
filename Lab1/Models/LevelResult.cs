@@ -12,11 +12,6 @@ namespace Lab1.Models
         [ForeignKey("Level")]
         public int LevelId { get; set; }
         public int Score { get; set; }
-        public DateOnly CompletionDate { get; set; }
-
-        public static implicit operator LevelResult(LevelResult v)
-        {
-            throw new NotImplementedException();
-        }
+        public DateOnly CompletionDate { get; set; }        
     }
 }
