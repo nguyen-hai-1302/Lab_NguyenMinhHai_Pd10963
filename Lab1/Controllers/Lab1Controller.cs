@@ -3,11 +3,16 @@ using Lab1.DTO;
 using Lab1.Models;
 using Lab1.Service;
 using Lab1.ViewModel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace Lab1.Controllers
 {
@@ -19,12 +24,37 @@ namespace Lab1.Controllers
         private readonly IEmailService _emailService;
         protected ResponseApi _response;
         private readonly UserManager<ApplicationUser> _userManager;
-        public Lab1Controller(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IEmailService emailService)
+        private readonly IConfiguration _configuration;
+        public Lab1Controller(ApplicationDbContext db, UserManager<ApplicationUser> userManager, IEmailService emailService, IConfiguration configuration)
         {
             _db = db;
             _response = new();
             _userManager = userManager;
             _emailService = emailService;
+            _configuration = configuration;
+        }
+        private string GenerateJwtToken(ApplicationUser user)
+        {
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+            var claims = new[]
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(ClaimTypes.NameIdentifier, user.Id)
+
+            };
+            var token = new JwtSecurityToken
+            (
+                issuer: _configuration["Jwt:Issuer"],
+                audience: _configuration["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.Now.AddMinutes(30),
+                signingCredentials: credentials
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
         [HttpGet("GetAllGameLevel")]
         public async Task<IActionResult> GetAllGameLevel()
@@ -130,9 +160,15 @@ namespace Lab1.Controllers
                 var user = await _userManager.FindByEmailAsync(email);
                 if (user != null && await _userManager.CheckPasswordAsync(user, password))
                 {
+                    var token = GenerateJwtToken(user);
+                    var data = new
+                    {
+                        token = token,
+                        user = user,
+                    };
                     _response.IsSuccess = true;
                     _response.Notification = "Dang nhap thanh cong";
-                    _response.data = user;
+                    _response.data = data;
                     return Ok(_response);
                 }
                 else
@@ -205,7 +241,7 @@ namespace Lab1.Controllers
                 if (idRegion > 0)
                 {
                     var nameRegion = await _db.Regions.Where(x => x.RegionId == idRegion).Select(x => x.Name).FirstOrDefaultAsync();
-                    if (nameRegion != null)
+                    if (nameRegion == null)
                     {
                         _response.IsSuccess = false;
                         _response.Notification = "Khong tim thay khu vuc";
@@ -376,7 +412,7 @@ namespace Lab1.Controllers
                     {
                         await userInformationDTO.Avatar.CopyToAsync(stream);
                     }
-                    user.Avatar = fileName;                    
+                    user.Avatar = fileName;
                 }
                 await _db.SaveChangesAsync();
                 _response.IsSuccess = true;
@@ -410,7 +446,7 @@ namespace Lab1.Controllers
                 _response.IsSuccess = true;
                 _response.Notification = "Xoa nguoi dung thanh cong";
                 _response.data = user;
-                return Ok(_response);   
+                return Ok(_response);
             }
             catch (Exception ex)
             {
@@ -454,7 +490,7 @@ namespace Lab1.Controllers
                 return BadRequest(_response);
             }
         }
-        [HttpPut("ChangeUserPassword")]
+        [HttpPut("CheckOTP")]
         public async Task<IActionResult> CheckOTP(CheckOTPDTO checkOTPDTO)
         {
             try
@@ -527,7 +563,7 @@ namespace Lab1.Controllers
                         _response.data = result.Errors;
                         return Ok(_response);
                     }
-                   
+
                 }
                 else
                 {
@@ -536,6 +572,26 @@ namespace Lab1.Controllers
                     _response.data = null;
                     return BadRequest(_response);
                 }
+            }
+            catch (Exception ex)
+            {
+                _response.IsSuccess = false;
+                _response.Notification = "Loi";
+                _response.data = ex.Message;
+                return BadRequest(_response);
+            }
+        }
+        [HttpGet("GetActionResultByUser/{userId}")]
+        [Authorize]
+        public async Task<IActionResult> GetActionResultByUser(string userId)
+        {
+            try
+            {
+                var result = await _db.LevelResults.Where(x => x.UserId == userId).ToListAsync();
+                _response.IsSuccess = true;
+                _response.Notification = "lay du lieu thanh cong";
+                _response.data = result;
+                return Ok(_response);
             }
             catch (Exception ex)
             {
