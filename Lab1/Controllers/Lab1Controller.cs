@@ -582,7 +582,7 @@ namespace Lab1.Controllers
             }
         }
         [HttpGet("GetActionResultByUser/{userId}")]
-        [Authorize]
+        //[Authorize]
         public async Task<IActionResult> GetActionResultByUser(string userId)
         {
             try

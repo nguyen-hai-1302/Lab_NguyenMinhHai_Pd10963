@@ -25,8 +25,34 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
                         </li>
+                        @if (SignInManager.IsSignedIn(User))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Game" asp-action="Index">Game Management</a>
+                            </li>
+                        }
                     </ul>
                 </div>
+                <ul class="navbar-nav">
+                    @if (SignInManager.IsSignedIn(User))
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link" href="#">Hello, @UserManager.GetUserName(User)</a>
+                        </li>
+                        <li class="nav-item">
+                            <a asp-controller="Home" class="nav-link" asp-action="Logout">Logout</a>
+                        </li>
+                    }
+                    else
+                    {
+                        <li class="nav-item">
+                            <a asp-controller="Home" class="nav-link" asp-action="Register">Register</a>
+                        </li>
+                        <li class="nav-item">
+                            <a asp-controller="Home" class="nav-link" asp-action="Login" class="nav-link">Login</a>
+                        </li>
+                    }
+                </ul>
             </div>
         </nav>
     </header>
